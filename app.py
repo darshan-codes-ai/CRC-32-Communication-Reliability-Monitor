@@ -874,7 +874,7 @@ def analytics_page() -> None:
         if px:
             fig = px.bar(status_df, x="Status", y="Count", color="Status", color_discrete_map={"VALID": "#25d07f", "CORRUPTED": "#ff5268"})
             fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key="analytics_status_chart")
         else:
             st.bar_chart(status_df.set_index("Status"))
 
@@ -885,7 +885,7 @@ def analytics_page() -> None:
         elif px:
             fig = px.pie(error_df, names="Error Type", values="Count", hole=0.42, color_discrete_sequence=["#ff5268", "#ffb84d", "#9b7cff"])
             fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key="analytics_error_type_chart")
         else:
             st.bar_chart(error_df.set_index("Error Type"))
 
@@ -895,7 +895,7 @@ def analytics_page() -> None:
         if px:
             fig = px.bar(retransmission_df, x="Action", y="Count", color_discrete_sequence=["#ffb84d"])
             fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key="analytics_retransmission_chart")
         else:
             st.bar_chart(retransmission_df.set_index("Action"))
 
@@ -906,7 +906,7 @@ def analytics_page() -> None:
         elif px:
             fig = px.bar(communication_df, x="Status", y="Count", color="Status", color_discrete_map={"VALID": "#25d07f", "CORRUPTED": "#ff5268"})
             fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key="analytics_communication_status_chart")
         else:
             st.bar_chart(communication_df.set_index("Status"))
 
