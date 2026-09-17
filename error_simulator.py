@@ -7,13 +7,13 @@ ERROR_TYPES = [
     "Burst Error",
 ]
 
-
+# Keep the dashboard's selected error mode within the simulator's supported choices.
 def normalize_error_type(error_type: str) -> str:
     """Return a supported error type, defaulting to No Error."""
     # DEMO: The dashboard sends the selected error type here.
     return error_type if error_type in ERROR_TYPES else "No Error"
 
-
+# Produce one deterministic, visible character substitution for text-safe corruption demos.
 def _change_char(char: str) -> str:
     """Change one visible character while keeping the result presentation-safe."""
     # DEMO: Changes a visible character so corruption is easy to see on screen.
@@ -31,14 +31,14 @@ def _change_char(char: str) -> str:
         return chr(((ord(char) - ord("a") + 1) % 26) + ord("a"))
     return "!" if char != "!" else "?"
 
-
+# Apply the character substitution at one index while preserving all other message characters.
 def _replace_at(message: str, index: int) -> str:
     """Replace one character at a selected position."""
     chars = list(message)
     chars[index] = _change_char(chars[index])
     return "".join(chars)
 
-
+# Create the simulated received text for no-error, point, multi-point, or burst corruption.
 def simulate_error(message: str, error_type: str) -> str:
     """Return a received message after applying the selected error condition."""
     # DEMO: This is the main error-simulation function to show after CRC generation.

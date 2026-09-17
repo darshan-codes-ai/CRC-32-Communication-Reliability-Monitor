@@ -50,22 +50,24 @@ STATE_DEFAULTS = {
     "auto_retransmission": False,
 }
 
-
+# Populate missing Streamlit session keys while preserving any state from the current visit.
 def init_session_state() -> None:
+    # Streamlit reruns this script for each interaction, so these keys persist the UI workflow.
     for key, value in STATE_DEFAULTS.items():
         if key not in st.session_state:
             st.session_state[key] = value.copy() if isinstance(value, list) else value
 
-
+# Restore every application counter, message field, log, and navigation setting to defaults.
 def reset_session() -> None:
+    # Copy list defaults so a reset starts with fresh logs/results rather than shared list objects.
     for key, value in STATE_DEFAULTS.items():
         st.session_state[key] = value.copy() if isinstance(value, list) else value
 
-
+# Report whether a sender message and its reference CRC have already been created.
 def has_message() -> bool:
     return st.session_state.original_message is not None
 
-
+# Render a status label as escaped HTML with the matching visual state class.
 def status_badge(status: str) -> str:
     status = (status or "WAITING").upper()
     classes = {
@@ -75,23 +77,23 @@ def status_badge(status: str) -> str:
     }
     return f"<span class='status-badge {classes.get(status, 'badge-waiting')}'>{escape(status)}</span>"
 
-
+# Convert a numerator and denominator into a one-decimal percentage for analytics metrics.
 def rate(part: int, whole: int) -> float:
     return round((part / whole) * 100, 1) if whole else 0.0
 
-
+# Count completed valid and corrupted verification outcomes.
 def total_outcomes() -> int:
     return st.session_state.valid_messages + st.session_state.corrupted_messages
 
-
+# Calculate the percentage of completed attempts whose CRCs matched.
 def success_rate() -> float:
     return rate(st.session_state.valid_messages, total_outcomes())
 
-
+# Calculate the percentage of completed attempts whose CRCs differed.
 def error_rate() -> float:
     return rate(st.session_state.corrupted_messages, total_outcomes())
 
-
+# Provide a readable dashboard label for missing, empty, or populated message text.
 def display_message(message: str | None) -> str:
     if message is None:
         return "No message sent yet"
@@ -99,8 +101,9 @@ def display_message(message: str | None) -> str:
         return "(empty message)"
     return message
 
-
+# Append one timestamped sender/receiver event with the current CRC values to the log.
 def add_log(status: str, action: str, error_type: str | None = None, message: str | None = None) -> None:
+    # The log captures the complete sender-to-receiver result used by analytics and CSV export.
     error_label = "None" if error_type in (None, "No Error") else error_type.replace(" Error", "")
     st.session_state.communication_log.append(
         {
@@ -116,16 +119,18 @@ def add_log(status: str, action: str, error_type: str | None = None, message: st
         }
     )
 
-
+# Increment total attempts and the matching valid/corrupted analytics counter.
 def record_attempt(status: str) -> None:
+    # Attempts include the initial delivery, simulated checks, manual verification, and retransmissions.
     st.session_state.total_attempts += 1
     if status == "VALID":
         st.session_state.valid_messages += 1
     elif status == "CORRUPTED":
         st.session_state.corrupted_messages += 1
 
-
+# Store received text, calculate its CRC, and update the receiver verification status.
 def set_received_message(received: str, error_type: str = "No Error") -> str:
+    # Receiver CRC is calculated from received text, then compared with the sender's stored reference.
     st.session_state.received_message = received
     st.session_state.current_crc = calculate_crc32(received)
     st.session_state.error_type = error_type
@@ -133,8 +138,9 @@ def set_received_message(received: str, error_type: str = "No Error") -> str:
     st.session_state.verification_status = status
     return status
 
-
+# Start a transmission by generating the reference CRC and recording its initial delivery.
 def send_message(message: str) -> str:
+    # Sending creates the reference CRC before the first received-message verification.
     st.session_state.original_message = message
     st.session_state.reference_crc = calculate_crc32(message)
     st.session_state.messages_sent += 1
@@ -144,8 +150,9 @@ def send_message(message: str) -> str:
     add_log(status, "Delivered" if status == "VALID" else "Retransmission Required", "No Error", message)
     return status
 
-
+# Recalculate and verify the currently received message, then record the verification action.
 def verify_current_message(action: str = "Verified") -> str | None:
+    # The receiver recomputes CRC from its current text; a mismatch drives the retransmission path.
     if not has_message():
         return None
 
@@ -157,8 +164,9 @@ def verify_current_message(action: str = "Verified") -> str | None:
     add_log(status, "Delivered" if status == "VALID" else "Retransmission Required", st.session_state.error_type)
     return status
 
-
+# Restore the original text as a valid delivery and log a manual or automatic retransmission.
 def perform_retransmission(auto: bool = False) -> str | None:
+    # Retransmission replaces corrupted text with the original and records a successful recovery attempt.
     if not has_message():
         return None
 
@@ -174,8 +182,9 @@ def perform_retransmission(auto: bool = False) -> str | None:
     add_log("VALID", action, "No Error", original)
     return "VALID"
 
-
+# Load the HELLO demonstration into session state without creating a new communication log row.
 def load_demo() -> None:
+    # Demo state is populated directly so the presentation opens on a known valid HELLO exchange.
     reset_session()
     demo_message = "HELLO"
     st.session_state.message_input = demo_message
@@ -187,15 +196,16 @@ def load_demo() -> None:
     st.session_state.navigation = "📡 Communication"
     st.session_state.last_action = "Demo loaded with HELLO"
 
-
+# Convert the session's communication-event dictionaries into the table displayed by Streamlit.
 def communication_log_dataframe() -> pd.DataFrame:
+    # Keep column order stable so the on-screen table and downloaded report have the same schema.
     return pd.DataFrame(st.session_state.communication_log, columns=LOG_COLUMNS)
 
-
+# Serialize the communication table as UTF-8 CSV bytes for the download control.
 def csv_report_bytes() -> bytes:
     return communication_log_dataframe().to_csv(index=False).encode("utf-8")
 
-
+# Inject the dashboard's visual theme and layout CSS into the Streamlit page.
 def inject_css() -> None:
     st.markdown(
         """
@@ -468,12 +478,12 @@ def inject_css() -> None:
         unsafe_allow_html=True,
     )
 
-
+# Render the shared application title and subtitle at the top of each page.
 def render_header() -> None:
     st.markdown(f"# {APP_TITLE}")
     st.markdown(f"<div class='app-subtitle'>{APP_SUBTITLE}</div>", unsafe_allow_html=True)
 
-
+# Render one styled metric card with an escaped label, value, note, and accent color.
 def render_metric_card(label: str, value: str | int, note: str = "", color: str = "#2bb7ff") -> None:
     st.markdown(
         f"""
@@ -486,7 +496,7 @@ def render_metric_card(label: str, value: str | int, note: str = "", color: str 
         unsafe_allow_html=True,
     )
 
-
+# Arrange the four headline transmission, integrity, corruption, and retransmission metrics.
 def render_core_metrics() -> None:
     cols = st.columns(4)
     metrics = [
@@ -499,7 +509,7 @@ def render_core_metrics() -> None:
         with col:
             render_metric_card(*metric)
 
-
+# Select the status-specific message and render the valid, corrupted, or waiting banner.
 def render_status_box() -> None:
     status = st.session_state.verification_status
     if status == "VALID":
@@ -525,7 +535,7 @@ def render_status_box() -> None:
         unsafe_allow_html=True,
     )
 
-
+# Render current message/CRC details plus attempt, error-rate, and success-rate metrics.
 def render_current_status_panel() -> None:
     st.markdown("<div class='section-title'>Communication Status</div>", unsafe_allow_html=True)
     st.markdown(
@@ -568,7 +578,7 @@ def render_current_status_panel() -> None:
     cols[1].metric("Error Rate", f"{error_rate()}%")
     cols[2].metric("Success Rate", f"{success_rate()}%")
 
-
+# Render the ordered visual path from message creation through logging and CSV export.
 def render_flow() -> None:
     steps = [
         "Message",
@@ -590,8 +600,9 @@ def render_flow() -> None:
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-
+# Render the communication event table and expose its CSV report download.
 def render_communication_log() -> None:
+    # This shared component is called by dashboard, communication, simulator, and analytics pages.
     st.markdown("<div class='section-title'>Communication Log</div>", unsafe_allow_html=True)
     df = communication_log_dataframe()
     st.dataframe(df, width="stretch", hide_index=True)
@@ -603,8 +614,9 @@ def render_communication_log() -> None:
         width="stretch",
     )
 
-
+# Show the receiver's retransmission controls based on current verification state.
 def render_retransmission_panel() -> None:
+    # Only corrupted state exposes a recovery action; valid and waiting states show guidance instead.
     if st.session_state.verification_status == "CORRUPTED":
         st.error("🔴 ERROR DETECTED")
         st.write("CRC mismatch detected. The receiver requests retransmission.")
@@ -616,8 +628,9 @@ def render_retransmission_panel() -> None:
     else:
         st.info("Send a message first to enable verification and retransmission.")
 
-
+# Build sidebar actions for demo/reset, auto-retransmission, navigation, and instructions.
 def render_sidebar() -> str:
+    # Sidebar buttons mutate session state, while the radio selection determines the page rendered below.
     with st.sidebar:
         st.markdown("## Network Monitor")
         st.success("System Status: 🟢 ONLINE")
@@ -661,7 +674,7 @@ def render_sidebar() -> str:
         )
     return page
 
-
+# Compose the dashboard overview from shared metrics, flow, status, and log components.
 def dashboard_page() -> None:
     render_header()
     render_core_metrics()
@@ -669,8 +682,9 @@ def dashboard_page() -> None:
     render_current_status_panel()
     render_communication_log()
 
-
+# Render sender and receiver controls for sending, verifying, and retransmitting messages.
 def communication_page() -> None:
+    # Sender controls create the reference CRC; receiver controls verify current text or request recovery.
     render_header()
 
     sender, receiver = st.columns(2)
@@ -756,8 +770,9 @@ def communication_page() -> None:
     render_current_status_panel()
     render_communication_log()
 
-
+# Run a selected deterministic text corruption mode and immediately verify the resulting CRC.
 def error_simulator_page() -> None:
+    # The simulator deliberately changes visible characters, not raw wire bits, for clear classroom output.
     render_header()
     st.markdown("<div class='section-title'>⚡ Communication Error Simulator</div>", unsafe_allow_html=True)
     st.info("Select an error condition to simulate transmission corruption.")
@@ -767,6 +782,7 @@ def error_simulator_page() -> None:
         if not has_message():
             st.warning("Send a message first. The simulator needs transmitted data to corrupt.")
         else:
+            # Each selected corruption is logged as a receiver attempt before optional auto-retransmission.
             received = simulate_error(st.session_state.original_message or "", selected_error)
             status = set_received_message(received, selected_error)
             record_attempt(status)
@@ -819,8 +835,9 @@ def error_simulator_page() -> None:
     render_retransmission_panel()
     render_communication_log()
 
-
+# Build analytics tables and charts for outcomes, error types, retransmissions, and statuses.
 def analytics_page() -> None:
+    # Analytics derives chart data from counters and the same communication log used by the dashboard.
     render_header()
     st.markdown("<div class='section-title'>📊 Analytics</div>", unsafe_allow_html=True)
 
@@ -895,8 +912,9 @@ def analytics_page() -> None:
 
     render_communication_log()
 
-
+# Execute the predefined CRC/error combinations and return pass/fail records for the test UI.
 def run_test_cases() -> list[dict[str, str]]:
+    # Each case follows the production path: reference CRC, simulated receive text, current CRC, status.
     cases = [
         ("TC01", "HELLO", "No Error", "VALID"),
         ("TC02", "HELLO", "Single-Bit Error", "CORRUPTED"),
@@ -923,8 +941,9 @@ def run_test_cases() -> list[dict[str, str]]:
         )
     return results
 
-
+# Render the predefined test catalog and, on request, display its execution results.
 def test_center_page() -> None:
+    # The test page stores results in session state so Streamlit reruns keep the latest test table visible.
     render_header()
     st.markdown("<div class='section-title'>🧪 Test Center</div>", unsafe_allow_html=True)
     st.write("Predefined CRC-32 transmission tests for the live demonstration.")
@@ -953,8 +972,9 @@ def test_center_page() -> None:
         )
         st.dataframe(preview_df, width="stretch", hide_index=True)
 
-
+# Configure Streamlit, initialize state/styles, route the selected page, and start the app.
 def main() -> None:
+    # All page actions rerun through this router after shared configuration and session initialization.
     st.set_page_config(
         page_title="CRC-32 Communication Reliability Monitor",
         page_icon="🔐",
