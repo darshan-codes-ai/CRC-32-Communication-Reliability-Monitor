@@ -3,6 +3,10 @@
 import zlib
 
 
+# DEMO: Main CRC calculation function.
+# Use this first when explaining how the CRC value is generated.
+# Input: message
+# Output: CRC-32 value
 def calculate_crc32(data: str) -> int:
     """Return the unsigned CRC-32 checksum for normalized text data."""
     if data is None:

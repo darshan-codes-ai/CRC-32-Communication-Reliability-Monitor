@@ -134,6 +134,7 @@ def set_received_message(received: str, error_type: str = "No Error") -> str:
     return status
 
 
+# Sender stores the original message and creates the reference CRC.
 def send_message(message: str) -> str:
     st.session_state.original_message = message
     st.session_state.reference_crc = calculate_crc32(message)
