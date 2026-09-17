@@ -4,22 +4,35 @@ import zlib
 
 
 def calculate_crc32(data: str) -> int:
-    """Return the unsigned CRC-32 checksum for normalized text data."""
+    """Calculate the project's CRC-32 checksum for text data."""
+    # DEMO: This is the main CRC function to show in the viva.
+    # Flow: text -> case-normalize -> UTF-8 bytes -> CRC-32 -> 32-bit integer.
     if data is None:
         data = ""
+
+    # The project intentionally treats upper/lower case as equivalent.
     normalized = str(data).casefold()
+
+    # zlib.crc32() performs the actual CRC-32 calculation.
+    # & 0xFFFFFFFF keeps the result in the unsigned 32-bit range.
     return zlib.crc32(normalized.encode("utf-8")) & 0xFFFFFFFF
 
 
 def format_crc(crc: int | None) -> str:
     """Format a CRC-32 integer as uppercase 8-character hexadecimal."""
+    # DEMO: Used by the dashboard so CRC values are easy to read.
     if crc is None:
         return "--------"
     return f"{crc & 0xFFFFFFFF:08X}"
 
 
 def verify_crc(data: str, reference_crc: int | None) -> bool:
-    """Verify text data by comparing its current CRC-32 with a reference CRC."""
+    """Verify received data against the sender's reference CRC."""
+    # DEMO: This is the key receiver-side comparison.
+    # True  -> CRCs match -> VALID
+    # False -> CRCs differ -> CORRUPTED
     if reference_crc is None:
         return False
-    return calculate_crc32(data) == (reference_crc & 0xFFFFFFFF)
+
+    current_crc = calculate_crc32(data)
+    return current_crc == (reference_crc & 0xFFFFFFFF)
